@@ -1,0 +1,34 @@
+##########################################################################
+# Install/Setup Redis
+##########################################################################
+- name: Add Redis GPG key
+  ansible.builtin.apt_key:
+    url: "{{ redis_gpg_key }}"
+    state: present
+
+- name: Add Redis repo
+  ansible.builtin.apt_repository:
+    repo: "{{ redis_repo_url }}"
+    state: present
+
+- name: Install Redis
+  apt:
+    name: ["redis={{ redis_version}}"]
+
+- name: Set Redis password
+  ansible.builtin.lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: "# requirepass"
+    line: "requirepass {{ redis_password }}"
+
+- name: Restart Redis
+  service:
+    name: "redis-server"
+    state: restarted
+    enabled: yes
+
+##########################################################################
+# Healtcheck
+##########################################################################
+- name: Redis healthcheck
+  shell: "echo 'ping' | redis-cli"

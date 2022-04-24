@@ -1,0 +1,12 @@
+{
+  "db": {
+    "host": "127.0.0.1",
+    "port": "5432",
+    "name": "{{ postgres_db_name }}",
+    "username": "{{ postgres_username }}",
+    "password": "{{ postgres_password }}",
+    "max_idle_conns": 20,
+    "max_open_conns": 100,
+    "conn_max_lifetime": 30
+  }
+}

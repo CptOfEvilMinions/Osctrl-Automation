@@ -1,0 +1,55 @@
+####################################################################
+# Install/Setup Redis exporter
+####################################################################
+- name: Create Redis exporter Group
+  group:
+    name: redis_exporter
+    state: present
+
+- name: Create Redis exporter User
+  user:
+    name: redis_exporter
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Stat Redis exporter
+  stat:
+    path: "/usr/local/bin/redis_exporter"
+  register: redis_exporter_install
+
+- name: Download redis exporter
+  get_url:
+    url: "{{ redis_exporter_dl_url }}"
+    dest: "/tmp/redis_exporter-{{ redis_exporter_version }}.linux-amd64.tar.gz"
+  when: not redis_exporter_install.stat.exists
+
+- name: Extract redis exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/redis_exporter-{{ redis_exporter_version }}.linux-amd64.tar.gz"
+    dest: "/tmp"
+    remote_src: yes
+  when: not redis_exporter_install.stat.exists
+
+- name: Move redis exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/redis_exporter-v{{ redis_exporter_version }}.linux-amd64/redis_exporter"
+    dest: "/usr/local/bin/redis_exporter"
+    owner: "root"
+    group: "root"
+    mode: "0755"
+    remote_src: yes
+  when: not redis_exporter_install.stat.exists
+
+- name: Copy redis exporter service
+  template:
+    src: "conf/ansible/metric_exporters/redis_exporter.service"
+    dest: "/etc/systemd/system/redis-exporter.service"
+    owner: "root"
+    group: "root"
+    mode: 0600
+
+- name: Start redis exporter service
+  service:
+    name: "redis-exporter"
+    enabled: yes
+    state: restarted

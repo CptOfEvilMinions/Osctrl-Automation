@@ -1,0 +1,22 @@
+##########################################################################
+# Install/Setup Osctrl-cli
+##########################################################################
+- name: Stat osctrl-cli binary
+  ansible.builtin.stat:
+    path: /usr/local/bin/osctrl-cli
+  register: osctrl_cli_binary
+
+- name: Download osctrl-cli binary
+  get_url:
+    url: https://github.com/jmpsec/osctrl/releases/download/v{{ osctrl_version }}/osctrl-cli-linux-amd64.bin
+    dest: /usr/local/bin/osctrl-cli
+    owner: root
+    group: root
+    mode: '0755'
+  when: not osctrl_cli_binary.stat.exists
+
+##########################################################################
+# Healthcheck
+##########################################################################
+- name: osctrl-cli healthcheck
+  shell: "/usr/local/bin/osctrl-cli --db --db-file /etc/osctrl/db.json check"

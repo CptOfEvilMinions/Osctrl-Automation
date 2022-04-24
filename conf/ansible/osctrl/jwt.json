@@ -1,0 +1,6 @@
+{
+  "jwt": {
+    "jwtSecret": "{{ lookup('password', '/dev/null chars=ascii_lowercase,digits length=64') }}",
+    "hoursToExpire": 3
+  }
+}

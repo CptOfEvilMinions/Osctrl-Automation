@@ -1,0 +1,34 @@
+####################################################################
+# Install/Setup FirewallD
+####################################################################
+- name: Setup Ubuntu UFW firewall
+  ufw:
+    rule: allow
+    name: OpenSSH
+
+- name: Allow HTTP
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: Allow HTTPS
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
+##########################################################################
+# Healthcheck
+##########################################################################
+- name: nginx health check
+  uri:
+    url: "https://{{ ansible_default_ipv4.address }}:443"
+    follow_redirects: none
+    method: GET
+    validate_certs: 'no'
+    status_code: 200
+  register: nginx_result
+  until: nginx_result.status == 200
+  retries: 720 # 720 * 5 seconds = 1hour (60*60/5)
+  delay: 5 # Every 5 seconds

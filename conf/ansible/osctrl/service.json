@@ -1,0 +1,9 @@
+{
+    "{{ service_name }}": {
+        "listener": "{{ listener }}",
+        "port": "{{ port }}",
+        "host": "{{ host }}",
+        "auth": "{{ auth }}",
+        "logger": "{{ logger }}"
+    }
+}

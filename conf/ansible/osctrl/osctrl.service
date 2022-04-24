@@ -1,0 +1,38 @@
+[Unit]
+Description=osctrl-{{ component }}
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=osctrl
+Group=osctrl
+Restart=on-failure
+RestartSec=10
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/usr/local/bin/osctrl-{{ component }} \
+    --config \
+    --config-file {{ config_file }} \
+    --redis \
+    --redis-file {{ redis_config }} \
+    {% if component == "admin" %}
+    --jwt \
+    --jwt-file /etc/osctrl/osctrl-admin/jwt.json \
+    --carved /var/osctrl/carves \
+    --templates /usr/share/osctrl/tmpl_admin \
+    --static /usr/share/osctrl/static \
+    --osquery-tables /etc/osctrl/osctrl-admin/osquery-{{ osquery_versions }}.json \
+    {% endif %}
+    {% if component == "api" %}
+    --jwt \
+    --jwt-file /etc/osctrl/osctrl-admin/jwt.json \
+    {% endif %}
+    --db \
+    --db-file {{ db_config }}
+
+StandardOutput=/var/log/osctrl/osctrl-{{ component }}.log
+StandardError=/var/log/osctrl/osctrl-{{ component }}.err
+
+
+[Install]
+WantedBy=multi-user.target

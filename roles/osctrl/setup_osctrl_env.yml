@@ -1,0 +1,29 @@
+##########################################################################
+# Create environment
+##########################################################################
+- name: Create osctrl environment
+  shell: >
+    /usr/local/bin/osctrl-cli --db
+    --db-file /etc/osctrl/db.json
+    env add
+    --name {{ osctrl_env }}
+    --hostname {{ hostname }}.{{ base_domain }}
+  register: osctrl_env_cmd
+  failed_when: osctrl_env_cmd.stdout != "Environment dev already exists!"
+  
+
+##########################################################################
+# Create admin user
+##########################################################################
+- name: Create osctrl admin user
+  shell: >
+    /usr/local/bin/osctrl-cli --db
+    --db-file /etc/osctrl/db.json
+    user add
+    --admin
+    --username {{ osctrl_username }}
+    --password {{ osctrl_password }}
+    --environment {{ osctrl_env }}
+    --fullname {{ osctrl_username }}
+  register: osctrl_user_cmd
+  failed_when: '"Failed to execute admin already exists" not in osctrl_user_cmd.stderr'

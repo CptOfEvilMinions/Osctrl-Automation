@@ -1,0 +1,27 @@
+- hosts: "{{ variable_host | default('osctrl', true) }}"
+  become: yes
+  become_user: root
+  tasks:
+    - include_vars: "group_vars/metrics.yml"
+    #- import_tasks: "roles/init_linux.yml"
+    #### Postgres #### 
+    #- import_tasks: "roles/postgres/setup_postgres.yml"
+    ##- import_tasks: "roles/postgres/setup_postgres_exporter.yml"
+    #### Redis #### 
+    #- import_tasks: "roles/redis/setup_redis.yml"
+    ##- import_tasks: "roles/redis/setup_redis_exporter.yml"
+    #### osctrl #### 
+    #- import_tasks: "roles/osctrl/init_osctrl.yml"
+    #- import_tasks: "roles/osctrl/setup_osctrl_tls.yml"
+    #- import_tasks: "roles/osctrl/setup_osctrl_admin.yml"
+    #- import_tasks: "roles/osctrl/setup_osctrl_api.yml"
+    #- import_tasks: "roles/osctrl/setup_osctrl_cli.yml"
+    #- import_tasks: "roles/osctrl/setup_osctrl_env.yml"
+    #### metrics #### 
+    ##- import_tasks: "roles/metrics/setup_grafana.yml"
+    ##- import_tasks: "roles/metrics/setup_prometheus.yml"
+    #### NGINX #### 
+    - import_tasks: "roles/nginx/setup_nginx.yml"
+    ##- import_tasks: "roles/nginx/setup_nginx_exporter.yml"
+    #### UFW #### 
+    - import_tasks: "roles/ufw.yml"

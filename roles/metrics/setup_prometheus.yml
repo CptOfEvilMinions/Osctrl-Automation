@@ -1,0 +1,126 @@
+######################################################
+# Install Prometheus
+######################################################
+- name: Create Prometheus Group
+  group:
+    name: prometheus
+    state: present
+
+- name: Create Prometheus User
+  user:
+    name: prometheus
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Stat Prometheus install
+  stat:
+    path: "/usr/local/bin/prometheus"
+  register: prometheus_install
+
+- name: Create Prometheus directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "/var/lib/prometheus"
+    - "/etc/prometheus"
+    - "/etc/prometheus/rules"
+    - "/etc/prometheus/rules.d"
+    - "/etc/prometheus/files_sd"
+  when: not prometheus_install.stat.exists
+
+- name: Download Prometheus
+  get_url:
+    url: "{{ prometheus_dl_url }}"
+    dest: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+  when: not prometheus_install.stat.exists
+
+- name: Extract Prometheus
+  ansible.builtin.unarchive:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz"
+    dest: "/tmp"
+    remote_src: yes
+  when: not prometheus_install.stat.exists
+
+- name: Move Prometheus bins
+  ansible.builtin.copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: "root"
+    group: "root"
+    mode: "0755"
+    remote_src: yes
+  with_items:
+    - "prometheus"
+    - "promtool"
+  when: not prometheus_install.stat.exists
+
+- name: Move console libs
+  ansible.builtin.copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-amd64/{{ item }}"
+    dest: "/etc/prometheus/"
+    owner: "prometheus"
+    group: "prometheus"
+    remote_src: yes
+  with_items:
+    - "consoles/"
+    - "console_libraries/"
+  when: not prometheus_install.stat.exists
+
+######################################################
+# Setup Prometheus
+######################################################
+# # - debug:
+# #     msg: "{{ hostvars.files }}"
+
+# - debug:
+#     msg: "{{ hostvars["files"] }}"
+
+# - debug:
+#     msg: "{{ groups }}"
+
+- name: Copy Prometheus config
+  ansible.builtin.template:
+    src: "conf/metrics/prometheus/prometheus.yml"
+    dest: "/etc/prometheus/prometheus.yml"
+    owner: "prometheus"
+    group: "prometheus"
+    mode: "0600"
+
+- name: Copy Prometheus service
+  ansible.builtin.template:
+    src: "conf/metrics/prometheus/prometheus.service"
+    dest: "/etc/systemd/system/prometheus.service"
+    owner: "root"
+    group: "root"
+    mode: "0600"
+
+- name: Prometheus dir permissions
+  file:
+    path: "{{ item }}"
+    recurse: true
+    owner: "prometheus"
+    group: "prometheus"
+    mode: "0775"
+  with_items:
+    - "/etc/prometheus/rules"
+    - "/etc/prometheus/rules.d"
+    - "/etc/prometheus/files_sd"
+    - "/var/lib/prometheus/"
+
+- name: Start Prometheus service
+  service:
+    name: "prometheus"
+    enabled: "yes"
+    state: "restarted"
+
+- name: Prometheus Health Check
+  uri:
+    url: "http://127.0.0.1:9090/api/v1/status/buildinfo"
+    follow_redirects: none
+    method: GET
+  register: prometheus_result
+  until: prometheus_result.status == 200
+  retries: 720
+  delay: 5
+  no_log: true

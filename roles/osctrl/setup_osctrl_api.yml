@@ -1,0 +1,78 @@
+##########################################################################
+# Install/Setup Osctrl-api
+##########################################################################
+- name: stat /etc/osctrl/osctrl-api directory
+  ansible.builtin.stat:
+    path: "/etc/osctrl/osctrl-api"
+  register: osctrl_api_dir
+
+- name: Create /etc/osctrl/osctrl-api directory
+  ansible.builtin.file:
+    path: "/etc/osctrl/osctrl-api"
+    state: directory
+    recurse: yes
+    owner: root
+    group: root
+
+- name: Stat osctrl-api binary
+  ansible.builtin.stat:
+    path: /usr/local/bin/osctrl-api
+  register: osctrl_api_binary
+
+- name: Download osctrl-api binary
+  get_url:
+    url: https://github.com/jmpsec/osctrl/releases/download/v{{ osctrl_version }}/osctrl-api-linux-amd64.bin
+    dest: /usr/local/bin/osctrl-api
+    owner: root
+    group: root
+    mode: '0755'
+  when: not osctrl_api_binary.stat.exists
+
+- name: Copy osctrl-api service config
+  template:
+    src: "conf/ansible/osctrl/service.json"
+    dest: "/etc/osctrl/osctrl-api/service.json"
+    owner: root
+    group: osctrl
+    mode: '0640'
+  vars:
+    service_name: "api"
+    listener: "{{ osctrl_api_listener }}"
+    port: "{{ osctrl_api_port }}"
+    host: "{{ osctrl_api_host }}"
+    auth: "{{ osctrl_api_auth }}"
+    logger: "{{ osctrl_api_logger }}"
+
+- name: Copy osctrl-api systemd service config
+  template:
+    src: "conf/ansible/osctrl/osctrl.service"
+    dest: "/etc/systemd/system/osctrl-api.service"
+    owner: root
+    group: root
+    mode: '0644'
+  vars:
+    component: "api"
+    config_file: "/etc/osctrl/osctrl-api/service.json"
+    redis_config: "/etc/osctrl/redis.json"
+    db_config: "/etc/osctrl/db.json"
+
+- name: Restart osctrl-api service
+  service:
+    name: osctrl-api
+    enabled: yes
+    state: restarted
+
+##########################################################################
+# Healthcheck
+##########################################################################
+- name: osctrl-api healthcheck
+  uri:
+    url: "http://127.0.0.1:{{ osctrl_api_port }}"
+    follow_redirects: none
+    method: GET
+    remote_src: yes
+    status_code: 200
+  register: _result
+  until: _result.status == 200
+  retries: 720 # 720 * 5 seconds = 1hour (60*60/5)
+  delay: 5 # Every 5 seconds

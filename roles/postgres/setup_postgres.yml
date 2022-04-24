@@ -1,0 +1,55 @@
+##########################################################################
+# Install Postgres
+##########################################################################
+- name: Add Postgres GPG key
+  ansible.builtin.apt_key:
+    url: "{{ postgres_gpg_key }}"
+    state: present
+
+- name: Add Postgres repo
+  ansible.builtin.apt_repository:
+    repo: "{{ postgres_repo_url }}"
+    state: present
+
+- name: Install Postgres v{{ postgres_version }}
+  apt:
+    name: [
+      "postgresql-{{ postgres_version }}", 
+      "postgresql-client-{{ postgres_version }}",
+      "python3-pip",
+      "libpq-dev",
+      "acl",
+    ]
+
+- name: Install Postgres PIP modules
+  pip:
+    name: "{{ item }}"
+  with_items:
+    - psycopg2
+
+##########################################################################
+# Create osctrl database and user
+##########################################################################
+- name: Create a new database with name "{{ postgres_db_name }}"
+  community.postgresql.postgresql_db:
+    name: "{{ postgres_db_name }}"
+    state: present
+  become: true
+  become_user: postgres
+
+- name: Connect to osctrl database, create osctrl user, and grant access to database and ALL tables
+  community.postgresql.postgresql_user:
+    db: "{{ postgres_db_name }}"
+    name: "{{ postgres_username }}"
+    password: "{{ postgres_password }}"
+    priv: ALL
+    state: present
+  become: true
+  become_user: postgres
+
+
+##########################################################################
+# Postgres healthcheck
+##########################################################################
+- name: Postgres healthcheck
+  shell: "pg_isready --dbname={{ postgres_db_name }} --username={{ postgres_username }}"

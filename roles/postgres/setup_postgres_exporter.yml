@@ -1,0 +1,74 @@
+####################################################################
+# Create Postgres exporter user
+####################################################################
+- name: Create Postgres exporter user
+  community.postgresql.postgresql_user:
+    name: "postgres_exporter"
+    password: "{{ postgres_password }}"
+    priv: ALL
+    state: present
+  become: true
+  become_user: postgres
+
+
+####################################################################
+# Install/Setup Postgres exporter
+####################################################################
+# - name: Create Postgres exporter Group
+#   group:
+#     name: postgresexporter
+#     state: present
+
+# - name: Create Postgres exporter User
+#   user:
+#     name: postgresexporter
+#     shell: /usr/sbin/nologin
+#     state: present
+
+# - name: Stat Postgres exporter
+#   stat:
+#     path: "/usr/local/bin/postgres_exporter"
+#   register: postgres_exporter_install
+
+# - name: Download postgres exporter
+#   get_url:
+#     url: "{{ postgres_exporter_dl_url }}"
+#     dest: "/tmp/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64.tar.gz"
+#   when: not postgres_exporter_install.stat.exists
+
+# - name: Extract postgres exporter
+#   ansible.builtin.unarchive:
+#     src: "/tmp/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64.tar.gz"
+#     dest: "/tmp"
+#     remote_src: yes
+#   when: not postgres_exporter_install.stat.exists
+
+# - name: Move postgres exporter binary
+#   ansible.builtin.copy:
+#     src: "/tmp/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64/postgres_exporter"
+#     dest: "/usr/local/bin/postgres_exporter"
+#     owner: "root"
+#     group: "root"
+#     mode: "0755"
+#     remote_src: yes
+#   when: not postgres_exporter_install.stat.exists
+
+- name: Copy postgres exporter service
+  template:
+    src: "conf/postgres_exporter/postgres_exporter.service"
+    dest: "/etc/systemd/system/postgres-exporter.service"
+    owner: "root"
+    group: "root"
+    mode: 0600
+
+- name: Start postgres exporter service
+  service:
+    name: "postgres-exporter"
+    enabled: yes
+    state: restarted
+
+- name: Allow postgres exporter (9000/TCP)
+  community.general.ufw:
+    rule: allow
+    port: "{{ postgres_exporter_port }}"
+    proto: tcp

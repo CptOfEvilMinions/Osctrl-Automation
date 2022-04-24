@@ -1,0 +1,50 @@
+####################################################################
+# Setup hostname
+####################################################################
+- name: Set hostname
+  hostname:
+    name: "{{ hostname }}.{{ base_domain }}"
+
+- name: Set hostname in /etc/hosts
+  lineinfile:
+    dest: /etc/hosts
+    regexp: '^127\.0\.0\.1[ \t]+localhost'
+    line: "127.0.0.1 localhost {{ hostname }}"
+    state: present
+
+####################################################################
+#  Setup Timedatectl
+####################################################################
+- name: Set time to {{ timezone }}
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+####################################################################
+# Apt update
+####################################################################
+- name: Update all packages to their latest version
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+
+####################################################################
+# Reboot
+####################################################################
+- name: Reboot a slow machine that might have lots of updates to apply
+  reboot:
+    reboot_timeout: 3600
+  when: update.changed == True
+    
+####################################################################
+# Install software
+####################################################################
+- name: Install software
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - apt-transport-https
+    - htop
+    - tcpdump
+    - net-tools

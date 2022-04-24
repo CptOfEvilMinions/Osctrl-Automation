@@ -1,0 +1,60 @@
+####################################################################
+# Install/setup nginx
+####################################################################
+- name: Install NGINX
+  apt:
+    name: nginx
+    state: latest
+
+- name: Copy nginx.conf
+  template:
+    src: "conf/ansible/nginx/nginx.conf"
+    dest: "/etc/nginx/nginx.conf"
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Copy osctrl.conf
+  template:
+    src: "conf/ansible/nginx/osctrl.conf"
+    dest: "/etc/nginx/conf.d/osctrl.conf"
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Copy TLS cert
+  ansible.builtin.copy:
+    src: conf/tls/osctrl.crt
+    dest: /etc/ssl/certs/osctrl.crt
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Copy TLS key
+  ansible.builtin.copy:
+    src: conf/tls/osctrl.key
+    dest: /etc/ssl/private/osctrl.key
+    owner: root
+    group: root
+    mode: 0600
+
+- name: Restart NGINX
+  service:
+    name: nginx
+    enabled: yes
+    state: restarted
+
+##########################################################################
+# Healthcheck
+##########################################################################
+- name: nginx health check
+  uri:
+    url: "https://127.0.0.1:443/login"
+    follow_redirects: none
+    method: GET
+    validate_certs: 'no'
+    status_code: 200
+  register: nginx_result
+  until: nginx_result.status == 200
+  retries: 720 # 720 * 5 seconds = 1hour (60*60/5)
+  delay: 5 # Every 5 seconds
