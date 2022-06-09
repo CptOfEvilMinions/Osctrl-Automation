@@ -165,7 +165,8 @@ services:
   osctrl-cli:
     container_name: 'osctrl-cli'
     restart: unless-stopped
-    image: jmpsec/osctrl-cli:v${OSCTRL_VERSION}
+    #image: jmpsec/osctrl-cli:v${OSCTRL_VERSION}
+    image: jmpsec/osctrl-cli:6df8223
     tty: true # entrypoint executes `/bin/sh`
     environment:
       #### osctrl env ####

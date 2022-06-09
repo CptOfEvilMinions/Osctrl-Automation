@@ -1,42 +1,33 @@
 ######################################################
 # Install/Setup Grafana
 ######################################################
+- name: Stat grafana binary
+  ansible.builtin.stat:
+    path: /usr/sbin/grafana-server
+  register: grafana_binary
+
 - name: Install software
   apt:
     name: ['adduser','libfontconfig1']
     state: present
+  when: not grafana_binary.stat.exists
 
 - name: Download Grafana
   get_url:
     url: "{{ grafana_dl_url }}"
     dest: "/tmp/grafana_{{ grafana_version }}_amd64.deb"
+  when: not grafana_binary.stat.exists
 
 - name: Install Grafana
   apt:
     deb: "/tmp/grafana_{{ grafana_version }}_amd64.deb"
-
-- name: Copy Node exporter dashboard
-  ansible.builtin.copy:
-    src: 'conf/metrics/grafana/node-exporter-full_rev25.json'
-    dest: '/etc/grafana/provisioning/dashboards'
-    owner: root
-    group: grafana
-    mode: 0640
+  when: not grafana_binary.stat.exists
 
 - name: Start Grafana
   service:
     name: "grafana-server"
     enabled: yes
     state: restarted
-
-- name: Copy dashboards
-sdfsf
-sdf
-sdfds
-f
-ds
-fs
-dfs
 
 - name: Grafana Health Check
   uri:
@@ -48,3 +39,30 @@ dfs
   retries: 720
   delay: 5
   no_log: true
+
+######################################################
+# Setup Grafana datasources
+######################################################
+- name: Create Prometheus datasource
+  community.grafana.grafana_datasource:
+    grafana_url: http://localhost:3000
+    grafana_user: "admin"
+    grafana_password: "admin"
+    name: Prometheus
+    ds_type: prometheus
+    ds_url: http://localhost:9090
+    access: proxy
+    is_default: true
+
+######################################################
+# Setup Grafana dashboards
+######################################################
+- name: Import Grafana dashboard
+  community.grafana.grafana_dashboard:
+    grafana_url: http://localhost:3000
+    grafana_user: "admin"
+    grafana_password: "admin"
+    dashboard_id: "{{ item.key }}"
+    dashboard_revision: "{{ item.value }}"
+    state: present
+  with_dict: "{{ grafana_dashboard_ids }}"

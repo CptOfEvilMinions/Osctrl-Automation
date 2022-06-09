@@ -1,16 +1,6 @@
 ##########################################################################
 # Install Postgres
 ##########################################################################
-- name: Add Postgres GPG key
-  ansible.builtin.apt_key:
-    url: "{{ postgres_gpg_key }}"
-    state: present
-
-- name: Add Postgres repo
-  ansible.builtin.apt_repository:
-    repo: "{{ postgres_repo_url }}"
-    state: present
-
 - name: Install Postgres v{{ postgres_version }}
   apt:
     name: [
@@ -53,3 +43,4 @@
 ##########################################################################
 - name: Postgres healthcheck
   shell: "pg_isready --dbname={{ postgres_db_name }} --username={{ postgres_username }}"
+

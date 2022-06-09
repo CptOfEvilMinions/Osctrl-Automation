@@ -1,0 +1,290 @@
+version: "3.9"
+services:
+  ######################################### NGINX #########################################
+  nginx:
+    image: nginx:1.22.0-alpine
+    configs:
+      - source: nginx-config
+        target: /etc/nginx/nginx.conf
+      - source: nginx-osctrl-config
+        target: /etc/nginx/conf.d/osctrl.conf
+    secrets:
+      - osctrl-tls-cert
+      - osctrl-tls-key
+    ports: 
+      - 8000:80
+      - 8443:443
+    networks: 
+      - default
+      - osctrl-backend
+    depends_on: 
+      - osctrl-tls
+      - osctrl-admin
+      - osctrl-api
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 10M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 50
+        window: 120s
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "-k", "https://localhost"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 50
+    #   start_period: 30s
+
+
+  ######################################### osctrl-tls #########################################
+  osctrl-tls:
+    image: jmpsec/osctrl-tls:v0.2.9
+    secrets:
+      - source: osctrl-db-config
+        target: /opt/osctrl/config/db.json
+    environment:
+      #### TLS settings ####
+      - SERVICE_LISTENER=0.0.0.0
+      - SERVICE_PORT=9000
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_AUTH=none
+      - SERVICE_LOGGER=stdout      
+      #### Database settings ####
+      - DB_CONFIG=true
+      - DB_CONFIG_FILE=/opt/osctrl/config/db.json
+      #### Redis settings ####
+      - REDIS_HOST=redis
+    networks:
+      - osctrl-backend
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 100M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 50
+        window: 120s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  ######################################### osctrl-admin #########################################
+  osctrl-admin:
+    image: jmpsec/osctrl-admin:v0.2.9
+    secrets:
+      - source: osctrl-db-config
+        target: /opt/osctrl/config/db.json
+      - source: osctrl-jwt-config
+        target: /opt/osctrl/config/jwt.json
+    environment:
+      #### TLS settings ####
+      - SERVICE_LISTENER=0.0.0.0
+      - SERVICE_PORT=9001
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_AUTH=db
+      - JWT_CONFIG=true
+      - JWT_CONFIG_FILE=/opt/osctrl/config/jwt.json
+      - SERVICE_LOGGER=stdout      
+      #### Database settings ####
+      - DB_CONFIG=true
+      - DB_CONFIG_FILE=/opt/osctrl/config/db.json
+      #### Redis settings ####
+      - REDIS_HOST=redis
+    networks:
+      - osctrl-backend
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 100M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 50
+        window: 120s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  ######################################### osctrl-api #########################################
+  osctrl-api:
+    image: jmpsec/osctrl-api:v0.2.9
+    secrets:
+      - source: osctrl-db-config
+        target: /opt/osctrl/config/db.json
+      - source: osctrl-jwt-config
+        target: /opt/osctrl/config/jwt.json
+    environment:
+      #### TLS settings ####
+      - SERVICE_LISTENER=0.0.0.0
+      - SERVICE_PORT=9002
+      - SERVICE_HOST=0.0.0.0
+      - SERVICE_AUTH=jwt
+      - JWT_CONFIG=true
+      - JWT_CONFIG_FILE=/opt/osctrl/config/jwt.json
+      - SERVICE_LOGGER=stdout      
+      #### Database settings ####
+      - DB_CONFIG=true
+      - DB_CONFIG_FILE=/opt/osctrl/config/db.json
+      #### Redis settings ####
+      - REDIS_HOST=redis
+    networks:
+      - osctrl-backend
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 100M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 50
+        window: 120s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  ######################################### PostgreSQL #########################################
+  postgres:
+    image: postgres:14.3-alpine
+    secrets:
+      - osctrl-postgres-password
+    environment:
+      - POSTGRES_DB=osctrl
+      - POSTGRES_USER=osctrl
+      - POSTGRES_PASSWORD_FILE=/run/secrets/osctrl-postgres-password
+    networks:
+      - osctrl-backend
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 100M
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 100
+        window: 120s
+    # healthcheck:
+    #   test: ["pg_isready", "-U", "$${POSTGRES_USER}", "-d", "$${POSTGRES_DB}"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+
+  ######################################### Redis #########################################
+  redis:
+    image: redis:6.2.6-alpine3.15
+    networks:
+      - osctrl-backend
+    volumes:
+      - redis-data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 100M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 50
+        window: 120s
+
+  ######################################### osctrl-cli #########################################
+  # osctrl-cli is the component that creates the osctrl env and admin user
+  ##############################################################################################
+  osctrl-cli:
+    image: jmpsec/osctrl-cli:6df8223
+    tty: true # entrypoint executes `/bin/sh`
+    secrets:
+      - osctrl-env-password
+      - source: osctrl-db-config
+        target: /opt/osctrl/config/db.json      
+    environment:
+      #### osctrl env ####
+      - ENV_NAME=dev
+      - CERT_FILE=/opt/osctrl/config/osctrl.crt
+      - HOST=osctrl-nginx
+      #### osctrl admin ####
+      - OSCTRL_USER=admin
+      - OSCTRL_PASS_FILE=/run/secrets/osctrl-env-password
+      #### Database settings ####
+      - DB_CONFIG=true
+      - DB_CONFIG_FILE=/opt/osctrl/config/db.json
+    networks:
+      - osctrl-backend
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 100M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 50
+        window: 120s
+    healthcheck:
+      test: ["CMD", "/opt/osctrl/bin/osctrl-cli", "check"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+secrets:
+  osctrl-tls-cert:
+    external: true
+  osctrl-tls-key:
+    external: true
+  osctrl-db-config:
+    external: true
+  osctrl-jwt-config:
+    external: true
+  osctrl-postgres-password:
+    external: true
+  osctrl-env-password:
+    external: true
+
+configs:
+  nginx-config:
+    file: ./conf/docker/nginx/nginx.conf
+  nginx-osctrl-config:
+    file: ./conf/docker/nginx/osctrl-swarm.conf
+
+networks:
+  osctrl-backend:
+
+volumes:
+  postgres-db:
+  redis-data:
+  osquery-data:
+  osquery-conf:

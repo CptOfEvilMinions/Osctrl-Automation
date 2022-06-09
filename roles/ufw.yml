@@ -18,12 +18,30 @@
     port: '443'
     proto: tcp
 
+- name: Allow Grafana
+  ufw:
+    rule: allow
+    port: '8443'
+    proto: tcp
+
 ##########################################################################
-# Healthcheck
+# Healthchecks
 ##########################################################################
 - name: nginx health check
   uri:
-    url: "https://{{ ansible_default_ipv4.address }}:443"
+    url: "https://{{ ansible_default_ipv4.address }}:443/login"
+    follow_redirects: none
+    method: GET
+    validate_certs: 'no'
+    status_code: 200
+  register: nginx_result
+  until: nginx_result.status == 200
+  retries: 720 # 720 * 5 seconds = 1hour (60*60/5)
+  delay: 5 # Every 5 seconds
+
+- name: nginx health check
+  uri:
+    url: "https://{{ ansible_default_ipv4.address }}:8443/login"
     follow_redirects: none
     method: GET
     validate_certs: 'no'

@@ -1,15 +1,20 @@
 ##########################################################################
 # Create environment
 ##########################################################################
+- name: Stat osctrl-cli binary
+  ansible.builtin.stat:
+    path: /usr/local/bin/osctrl-cli
+  register: osctrl_cli_binary
+
 - name: Create osctrl environment
   shell: >
-    /usr/local/bin/osctrl-cli --db
+    /usr/local/bin/osctrl-cli 
+    --db
     --db-file /etc/osctrl/db.json
     env add
     --name {{ osctrl_env }}
     --hostname {{ hostname }}.{{ base_domain }}
-  register: osctrl_env_cmd
-  failed_when: osctrl_env_cmd.stdout != "Environment dev already exists!"
+  ignore_errors: yes 
   
 
 ##########################################################################
@@ -17,7 +22,8 @@
 ##########################################################################
 - name: Create osctrl admin user
   shell: >
-    /usr/local/bin/osctrl-cli --db
+    /usr/local/bin/osctrl-cli 
+    --db
     --db-file /etc/osctrl/db.json
     user add
     --admin
@@ -25,5 +31,4 @@
     --password {{ osctrl_password }}
     --environment {{ osctrl_env }}
     --fullname {{ osctrl_username }}
-  register: osctrl_user_cmd
-  failed_when: '"Failed to execute admin already exists" not in osctrl_user_cmd.stderr'
+  ignore_errors: yes 

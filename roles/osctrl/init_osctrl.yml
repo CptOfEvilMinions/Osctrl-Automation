@@ -30,24 +30,6 @@
   when: not osctrl_config_dir.stat.exists
 
 ##########################################################################
-# Create osctrl log directory
-##########################################################################
-- name: stat /var/log/osctrl directory
-  ansible.builtin.stat:
-    path: /var/log/osctrl
-  register: osctrl_log_dir
-
-- name: Create /var/log/osctrl directory
-  ansible.builtin.file:
-    path: "/var/log/osctrl"
-    state: directory
-    recurse: yes
-    owner: osctrl
-    group: adm
-  when: not osctrl_log_dir.stat.exists
-
-
-##########################################################################
 # Copy osctrl configs
 ##########################################################################
 - name: Copy osctrl DB config
@@ -67,22 +49,19 @@
     mode: '0640'
 
 ##########################################################################
-# Get osctrl source code
+# Create osctrl log directory
 ##########################################################################
-- name: Stat Osctrl source code
-  stat:
-    path: "/tmp/osctrl-{{ osctrl_version }}"
-  register: osctrl_source_code
+- name: stat /var/log/osctrl directory
+  ansible.builtin.stat:
+    path: /var/log/osctrl
+  register: osctrl_log_dir
 
-- name: Download Osctrl source code
-  get_url:
-    url: "{{ osctrl_web_assets }}"
-    dest: "/tmp/{{ osctrl_version }}.tar.gz"
-  when: not osctrl_source_code.stat.exists
+- name: Create /var/log/osctrl directory
+  ansible.builtin.file:
+    path: "/var/log/osctrl"
+    state: directory
+    recurse: yes
+    owner: osctrl
+    group: adm
+  when: not osctrl_log_dir.stat.exists
 
-- name: Extract Osctrl source code
-  ansible.builtin.unarchive:
-    src: "/tmp/{{ osctrl_version }}.tar.gz"
-    dest: "/tmp"
-    remote_src: yes
-  when: not osctrl_source_code.stat.exists

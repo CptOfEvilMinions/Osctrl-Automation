@@ -1,33 +1,19 @@
 ##########################################################################
-# Install/Setup Osctrl-tls
+# Install Osctrl-tls
 ##########################################################################
-- name: stat /etc/osctrl/osctrl-tls directory
-  ansible.builtin.stat:
-    path: "/etc/osctrl/osctrl-tls"
-  register: osctrl_tls_dir
-
-- name: Create /etc/osctrl/osctrl-tls directory
-  ansible.builtin.file:
-    path: "/etc/osctrl/osctrl-tls"
-    state: directory
-    recurse: yes
-    owner: root
-    group: root
-
 - name: Stat osctrl-tls binary
   ansible.builtin.stat:
     path: /usr/local/bin/osctrl-tls
   register: osctrl_tls_binary
 
-- name: Download osctrl-tls binary
-  get_url:
-    url: https://github.com/jmpsec/osctrl/releases/download/v{{ osctrl_version }}/osctrl-tls-linux-amd64.bin
-    dest: /usr/local/bin/osctrl-tls
-    owner: root
-    group: root
-    mode: '0755'
+- name: Download and install osctrl-tls v{{ osctrl_version }}
+  apt:
+    deb: "{{ osquery_deb_dl_url }}/osctrl-tls_v{{ osctrl_version }}_amd64.deb"
   when: not osctrl_tls_binary.stat.exists
 
+##########################################################################
+# Setup Osctrl-tls
+##########################################################################
 - name: Copy osctrl-tls service config
   template:
     src: "conf/ansible/osctrl/service.json"

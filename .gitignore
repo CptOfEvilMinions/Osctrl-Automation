@@ -1,3 +1,6 @@
 conf/tls/openssl.cnf
 conf/tls/*.crt
 conf/tls/*.key
+conf/docker/osctrl/db.json
+conf/docker/osctrl/jwt.json
+conf/docker/osctrl/redis.json

@@ -1,12 +1,14 @@
 ##################################### osctrl #####################################
 hostname: "osctrl"
-osctrl_version: "0.2.8"
+osctrl_version: "6.0.57"
 osctrl_username: "admin"
 osctrl_password: "Changeme123!"
 osctrl_env: "dev"
+osquery_deb_dl_url: "https://github.com/CptOfEvilMinions/osctrl/releases/download/v{{ osctrl_version }}"
 
-osquery_versions: 5.2.2
-osquery_schema_url: "https://raw.githubusercontent.com/jmpsec/osctrl/v{{ osctrl_version }}/deploy/osquery/data/{{ osquery_versions }}.json"
+##################################### Osquey #####################################
+osquery_version: 5.2.2
+osquery_schema_url: "https://raw.githubusercontent.com/osquery/osquery-site/source/src/data/osquery_schema_versions/{{ osquery_version }}.json"
 
 ##################################### osctrl-tls #####################################
 osctrl_tls_listener: "127.0.0.1"
@@ -21,7 +23,6 @@ osctrl_admin_port: 9001
 osctrl_admin_host: "0.0.0.0"
 osctrl_admin_auth: "db"
 osctrl_admin_logger: "stdout"
-osctrl_web_assets: "https://github.com/jmpsec/osctrl/archive/refs/tags/v{{ osctrl_version }}.tar.gz"
 
 ##################################### osctrl-api #####################################
 osctrl_api_listener: "127.0.0.1"
@@ -31,15 +32,11 @@ osctrl_api_auth: "jwt"
 osctrl_api_logger: "stdout"
 
 ##################################### postgres #####################################
-postgres_gpg_key: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
-postgres_repo_url: "deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main"
-postgres_version: "13"
+postgres_version: "14"
 postgres_db_name: "osctrl"
 postgres_username: "osctrl"
 postgres_password: "Changeme123!"
 
 ##################################### redis #####################################
-redis_gpg_key: "https://packages.redis.io/gpg"
-redis_repo_url: "deb https://packages.redis.io/deb focal main"
-redis_version: "6:6.2.6-3rl1~focal1"
+redis_version: "5:6.0.16-1ubuntu1"
 redis_password: "Changeme123!"

@@ -1,65 +1,134 @@
 ####################################################################
 # Create Postgres exporter user
+# https://github.com/prometheus-community/postgres_exporter#running-as-non-superuser
+# https://promcat.io/apps/postgresql#SetupGuide
 ####################################################################
-- name: Create Postgres exporter user
-  community.postgresql.postgresql_user:
-    name: "postgres_exporter"
-    password: "{{ postgres_password }}"
-    priv: ALL
-    state: present
+- name: Simple select query to acme db
+  community.postgresql.postgresql_query:
+    db: "postgres"
+    query: SELECT pg_user.usename FROM pg_catalog.pg_user WHERE  usename = 'postgres_exporter';
   become: true
   become_user: postgres
+  register: postgres_exporter
 
+- name: Copy Postgres exporter script
+  template:
+    src: "conf/ansible/postgres/postgres_exporter_setup.sql"
+    dest: "/tmp/postgres_exporter_setup.sql"
+    owner: root
+    group: postgres
+    mode: 0640
+  when: postgres_exporter.rowcount == 0
+
+- name: Setup Postgres exporter user
+  community.postgresql.postgresql_script:
+    path: "/tmp/postgres_exporter_setup.sql"
+  become: true
+  become_user: postgres
+  when: postgres_exporter.rowcount == 0
+
+- name: Remove Postgres exporter script
+  file:
+    path: "/tmp/postgres_exporter_setup.sql"
+    state: absent
 
 ####################################################################
-# Install/Setup Postgres exporter
+# Setup Postgres for stats
+# https://stackoverflow.com/questions/28147037/pghero-on-postgresapp-pg-stat-statements-must-be-loaded-via-shared-preload-libra
 ####################################################################
-# - name: Create Postgres exporter Group
-#   group:
-#     name: postgresexporter
-#     state: present
+- name: Enable pg_stat_statements
+  ansible.builtin.lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/postgresql.conf"
+    regexp: '^#shared_preload_libraries'
+    line: shared_preload_libraries = 'pg_stat_statements'
 
-# - name: Create Postgres exporter User
-#   user:
-#     name: postgresexporter
-#     shell: /usr/sbin/nologin
-#     state: present
+- name: Restart postgres
+  service:
+    name: 'postgresql'
+    enabled: yes
+    state: restarted
 
-# - name: Stat Postgres exporter
-#   stat:
-#     path: "/usr/local/bin/postgres_exporter"
-#   register: postgres_exporter_install
+####################################################################
+# Install Postgres exporter
+####################################################################
+- name: Create Postgres exporter Group
+  group:
+    name: postgresexporter
+    state: present
 
-# - name: Download postgres exporter
-#   get_url:
-#     url: "{{ postgres_exporter_dl_url }}"
-#     dest: "/tmp/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64.tar.gz"
-#   when: not postgres_exporter_install.stat.exists
+- name: Create Postgres exporter User
+  user:
+    name: postgresexporter
+    groups: postgresexporter
+    shell: /usr/sbin/nologin
+    state: present
 
-# - name: Extract postgres exporter
-#   ansible.builtin.unarchive:
-#     src: "/tmp/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64.tar.gz"
-#     dest: "/tmp"
-#     remote_src: yes
-#   when: not postgres_exporter_install.stat.exists
+- name: Stat Postgres exporter
+  stat:
+    path: "/usr/local/bin/postgres_exporter"
+  register: postgres_exporter_install
 
-# - name: Move postgres exporter binary
-#   ansible.builtin.copy:
-#     src: "/tmp/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64/postgres_exporter"
-#     dest: "/usr/local/bin/postgres_exporter"
-#     owner: "root"
-#     group: "root"
-#     mode: "0755"
-#     remote_src: yes
-#   when: not postgres_exporter_install.stat.exists
+- name: Download postgres exporter
+  get_url:
+    url: "{{ postgres_exporter_dl_url }}"
+    dest: "/tmp/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64.tar.gz"
+  when: not postgres_exporter_install.stat.exists
+
+- name: Extract postgres exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64.tar.gz"
+    dest: "/tmp"
+    remote_src: yes
+  when: not postgres_exporter_install.stat.exists
+
+- name: Move postgres exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/postgres_exporter-{{ postgres_exporter_version }}.linux-amd64/postgres_exporter"
+    dest: "/usr/local/bin/postgres_exporter"
+    owner: "root"
+    group: "root"
+    mode: "0755"
+    remote_src: yes
+  when: not postgres_exporter_install.stat.exists
 
 - name: Copy postgres exporter service
   template:
-    src: "conf/postgres_exporter/postgres_exporter.service"
+    src: "conf/ansible/metric_exporters/postgres_exporter.service"
     dest: "/etc/systemd/system/postgres-exporter.service"
     owner: "root"
     group: "root"
     mode: 0600
+
+
+####################################################################
+# Setup Postgres exporter
+####################################################################
+- name: Create config directory
+  file:
+    path: "/etc/postgres_exporter"
+    owner: root
+    group: root
+    state: directory
+
+# https://github.com/prometheus-community/postgres_exporter/issues/541
+# https://github.com/prometheus-community/postgres_exporter/issues/541
+# https://github.com/prometheus-community/postgres_exporter/issues/541
+# - name: Download Postgres queries.yaml
+#   get_url:
+#     url: "https://raw.githubusercontent.com/prometheus-community/postgres_exporter/v{{ postgres_exporter_version }}/queries.yaml"
+#     dest: "/etc/postgres_exporter/queries.yaml"
+#     owner: root
+#     group: postgresexporter
+#     mode: '0640'
+
+- name: Copy queries.yaml
+  template:
+    src: "conf/ansible/metric_exporters/postgres_exporter_queries.yaml"
+    dest: "/etc/postgres_exporter/queries.yaml"
+    owner: root
+    group: postgresexporter
+    mode: '0640'
+
 
 - name: Start postgres exporter service
   service:
@@ -67,8 +136,22 @@
     enabled: yes
     state: restarted
 
-- name: Allow postgres exporter (9000/TCP)
+- name: Allow postgres exporter (9187/TCP)
   community.general.ufw:
     rule: allow
     port: "{{ postgres_exporter_port }}"
     proto: tcp
+
+##########################################################################
+# Healthcheck
+##########################################################################
+- name: postgres exporter health check
+  uri:
+    url: "http://127.0.0.1:{{ postgres_exporter_port }}/metrics"
+    follow_redirects: none
+    method: GET
+    status_code: 200
+  register: postgres_exporter_result
+  until: postgres_exporter_result.status == 200
+  retries: 720 # 720 * 5 seconds = 1hour (60*60/5)
+  delay: 5 # Every 5 seconds

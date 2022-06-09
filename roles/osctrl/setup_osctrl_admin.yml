@@ -1,32 +1,54 @@
 ##########################################################################
-# Install/Setup Osctrl-admin
+# Install Osctrl-admin
 ##########################################################################
-- name: stat /etc/osctrl/osctrl-admin directory
-  ansible.builtin.stat:
-    path: "/etc/osctrl/osctrl-admin"
-  register: osctrl_admin_dir
-
-- name: Create /etc/osctrl/osctrl-admin directory
-  ansible.builtin.file:
-    path: "/etc/osctrl/osctrl-admin"
-    state: directory
-    recurse: yes
-    owner: root
-    group: root
-
 - name: Stat osctrl-admin binary
   ansible.builtin.stat:
     path: /usr/local/bin/osctrl-admin
   register: osctrl_admin_binary
 
-- name: Download osctrl-admin binary
-  get_url:
-    url: https://github.com/jmpsec/osctrl/releases/download/v{{ osctrl_version }}/osctrl-admin-linux-amd64.bin
-    dest: /usr/local/bin/osctrl-admin
-    owner: root
-    group: root
-    mode: '0755'
+- name: Download and install osctrl-admin v{{ osctrl_version }}
+  apt:
+    deb: "{{ osquery_deb_dl_url }}/osctrl-admin_v{{ osctrl_version }}_amd64.deb"
+  when: not osctrl_admin_binary.stat.exists
 
+##########################################################################
+# Setup Osctrl-admin file carves
+##########################################################################
+- name: stat /var/osctrl/carves directory
+  ansible.builtin.stat:
+    path: "/var/osctrl/carves"
+  register: osctrl_admin_carves_dir
+
+- name: Create /var/osctrl/carves directory for file carves
+  ansible.builtin.file:
+    path: "/var/osctrl/carves"
+    state: directory
+    recurse: yes
+    owner: root
+    group: osctrl
+  when: not osctrl_admin_carves_dir.stat.exists
+
+##########################################################################
+# Setup Osctrl-admin osquery schema
+##########################################################################
+- name: Stat Osquery schema
+  stat:
+    path: "/etc/osctrl/osctrl-admin/osquery-{{ osquery_version }}.json"
+  register: osquery_schema
+
+- name: Download Osquery schema
+  get_url:
+    url: "{{ osquery_schema_url }}"
+    dest: "/etc/osctrl/osctrl-admin/osquery-{{ osquery_version }}.json"
+    owner: "root"
+    group: "osctrl"
+    mode: "0640"
+  when: not osquery_schema.stat.exists
+
+
+##########################################################################
+# Setup Osctrl-admin
+##########################################################################
 - name: Stat osctrl-admin JWT config
   ansible.builtin.stat:
     path: "/etc/osctrl/osctrl-admin/jwt.json"
@@ -56,91 +78,6 @@
     auth: "{{ osctrl_admin_auth }}"
     logger: "{{ osctrl_admin_logger }}"
 
-##########################################################################
-# Setup Osctrl-admin file carves
-##########################################################################
-- name: stat /var/osctrl/carves directory
-  ansible.builtin.stat:
-    path: "/var/osctrl/carves"
-  register: osctrl_admin_carves_dir
-
-- name: Create /var/osctrl/carves directory for file carves
-  ansible.builtin.file:
-    path: "/var/osctrl/carves"
-    state: directory
-    recurse: yes
-    owner: root
-    group: osctrl
-  when: not osctrl_admin_carves_dir.stat.exists
-
-##########################################################################
-# Copy Osctrl-admin web assets
-##########################################################################
-- name: stat /usr/share/osctrl/tmpl_admin directory
-  ansible.builtin.stat:
-    path: "/usr/share/osctrl/tmpl_admin"
-  register: osctrl_admin_tmpl_dir
-
-- name: Create /usr/share/osctrl/tmpl_admin directory
-  ansible.builtin.file:
-    path: "/usr/share/osctrl/tmpl_admin"
-    state: directory
-    recurse: yes
-    owner: root
-    group: osctrl
-    mode: 0755
-  when: not osctrl_admin_tmpl_dir.stat.exists
-
-- name: stat /usr/share/osctrl/tmpl_admin content
-  ansible.builtin.stat:
-    path: "/usr/share/osctrl/tmpl_admin/login.html"
-  register: osctrl_admin_tmpl
-
-- name: Move Osctrl web assets
-  ansible.builtin.copy:
-    src: "/tmp/osctrl-{{ osctrl_version }}/admin/templates/"
-    dest: "/usr/share/osctrl/tmpl_admin"
-    owner: "root"
-    group: "osctrl"
-    mode: "0640"
-    remote_src: yes
-  when: not osctrl_admin_tmpl.stat.exists
-
-- name: stat /usr/share/osctrl/static content
-  ansible.builtin.stat:
-    path: "/usr/share/osctrl/static/img/logo.png"
-  register: osctrl_admin_static
-
-- name: Move Osctrl static web assets
-  ansible.builtin.copy:
-    src: "/tmp/osctrl-{{ osctrl_version }}/admin/static/"
-    dest: "/usr/share/osctrl/static"
-    owner: "root"
-    group: "osctrl"
-    mode: 0755
-    remote_src: yes
-  when: not osctrl_admin_static.stat.exists
-
-##########################################################################
-# Setup Osctrl-admin osquery schema
-##########################################################################
-- name: Stat Osquery schema
-  stat:
-    path: "/etc/osctrl/osctrl-admin/osquery-{{ osquery_versions }}.json"
-  register: osquery_schema
-
-- name: Download Osquery schema
-  get_url:
-    url: "{{ osquery_schema_url }}"
-    dest: "/etc/osctrl/osctrl-admin/osquery-{{ osquery_versions }}.json"
-    owner: "root"
-    group: "osctrl"
-    mode: "0640"
-  when: not osquery_schema.stat.exists
-
-##########################################################################
-# Setup Osctrl-admin SystemD service
-##########################################################################
 - name: Copy osctrl-admin systemd service config
   template:
     src: "conf/ansible/osctrl/osctrl.service"
@@ -161,7 +98,7 @@
     state: restarted
 
 ##########################################################################
-# Healthcheck
+# Healthcheck 
 ##########################################################################
 - name: osctrl-admin healthcheck
   uri:

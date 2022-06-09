@@ -21,7 +21,7 @@ ExecStart=/usr/local/bin/osctrl-{{ component }} \
     --carved /var/osctrl/carves \
     --templates /usr/share/osctrl/tmpl_admin \
     --static /usr/share/osctrl/static \
-    --osquery-tables /etc/osctrl/osctrl-admin/osquery-{{ osquery_versions }}.json \
+    --osquery-tables /etc/osctrl/osctrl-admin/osquery-{{ osquery_version }}.json \
     {% endif %}
     {% if component == "api" %}
     --jwt \

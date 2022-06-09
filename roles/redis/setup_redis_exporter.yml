@@ -1,6 +1,13 @@
 ####################################################################
 # Install/Setup Redis exporter
 ####################################################################
+- name: Create redis user for redis_exporter 
+  shell: |
+    echo "ACL SETUSER redisexporter +client +ping +info +config|get +cluster|info +slowlog +latency +memory +select +get +scan +xinfo +type +pfcount +strlen +llen +scard +zcard +hlen +xlen +eval allkeys on >{{ redis_exporter_password }}" | redis-cli -a {{ redis_password }}
+
+####################################################################
+# Install Redis exporter
+####################################################################
 - name: Create Redis exporter Group
   group:
     name: redis_exporter
@@ -9,6 +16,7 @@
 - name: Create Redis exporter User
   user:
     name: redis_exporter
+    groups: redis_exporter
     shell: /usr/sbin/nologin
     state: present
 
@@ -48,8 +56,42 @@
     group: "root"
     mode: 0600
 
+
+####################################################################
+# Setup Redis exporter
+####################################################################
+- name: Create config directory
+  file:
+    path: "/etc/redis_exporter"
+    owner: root
+    group: root
+    state: directory
+
+- name: Copy redis exporter password
+  template:
+    src: "conf/ansible/metric_exporters/redis_exporter_password.json"
+    dest: "/etc/redis_exporter/password.json"
+    owner: root
+    group: redis_exporter
+    mode: 0640
+
+
 - name: Start redis exporter service
   service:
     name: "redis-exporter"
     enabled: yes
     state: restarted
+
+##########################################################################
+# Healthcheck
+##########################################################################
+- name: redis_exporter health check
+  uri:
+    url: "http://127.0.0.1:{{ redis_exporter_port }}/metrics"
+    follow_redirects: none
+    method: GET
+    status_code: 200
+  register: nginx_result
+  until: nginx_result.status == 200
+  retries: 720 # 720 * 5 seconds = 1hour (60*60/5)
+  delay: 5 # Every 5 seconds  

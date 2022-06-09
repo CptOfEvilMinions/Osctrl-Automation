@@ -80,8 +80,8 @@
 #     msg: "{{ groups }}"
 
 - name: Copy Prometheus config
-  ansible.builtin.template:
-    src: "conf/metrics/prometheus/prometheus.yml"
+  ansible.builtin.copy:
+    src: "conf/ansible/prometheus/prometheus.yml"
     dest: "/etc/prometheus/prometheus.yml"
     owner: "prometheus"
     group: "prometheus"
@@ -89,7 +89,7 @@
 
 - name: Copy Prometheus service
   ansible.builtin.template:
-    src: "conf/metrics/prometheus/prometheus.service"
+    src: "conf/ansible/prometheus/prometheus.service"
     dest: "/etc/systemd/system/prometheus.service"
     owner: "root"
     group: "root"

@@ -4,7 +4,10 @@ Description=Prometheus exporter for Redis metrics
 [Service]
 Restart=always
 User=redis_exporter
-ExecStart=/usr/local/bin/redis_exporter
+ExecStart=/usr/local/bin/redis_exporter \
+    -redis.addr redis://127.0.0.1:6379 \
+    -redis.user redisexporter \
+    -redis.password-file=/etc/redis_exporter/password.json
 ExecReload=/bin/kill -HUP $MAINPID
 TimeoutStopSec=20s
 SendSIGKILL=no

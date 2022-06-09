@@ -6,13 +6,9 @@
     path: /usr/local/bin/osctrl-cli
   register: osctrl_cli_binary
 
-- name: Download osctrl-cli binary
-  get_url:
-    url: https://github.com/jmpsec/osctrl/releases/download/v{{ osctrl_version }}/osctrl-cli-linux-amd64.bin
-    dest: /usr/local/bin/osctrl-cli
-    owner: root
-    group: root
-    mode: '0755'
+- name: Download and install osctrl-cli v{{ osctrl_version }}
+  apt:
+    deb: "{{ osquery_deb_dl_url }}/osctrl-cli_v{{ osctrl_version }}_amd64.deb"
   when: not osctrl_cli_binary.stat.exists
 
 ##########################################################################

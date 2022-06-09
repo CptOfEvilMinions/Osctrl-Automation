@@ -1,0 +1,75 @@
+####################################################################
+# Install/Setup node exporter
+####################################################################
+- name: Create node exporter Group
+  group:
+    name: nodeexporter
+    state: present
+
+- name: Create node exporter User
+  user:
+    name: nodeexporter
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Stat node exporter
+  stat:
+    path: "/usr/local/bin/node_exporter"
+  register: node_exporter_install
+
+- name: Download node exporter
+  get_url:
+    url: "{{ node_exporter_dl_url }}"
+    dest: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+  when: not node_exporter_install.stat.exists
+
+- name: Extract node exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+    dest: "/tmp"
+    remote_src: yes
+  when: not node_exporter_install.stat.exists
+
+- name: Move node exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+    dest: "/usr/local/bin/node_exporter"
+    owner: "root"
+    group: "root"
+    mode: "0755"
+    remote_src: yes
+  when: not node_exporter_install.stat.exists
+
+- name: Copy node exporter service
+  template:
+    src: "conf/ansible/metric_exporters/node_exporter.service"
+    dest: "/etc/systemd/system/node-exporter.service"
+    owner: "root"
+    group: "root"
+    mode: 0600
+
+- name: Start node exporter service
+  service:
+    name: "node-exporter"
+    enabled: yes
+    state: restarted
+
+- name: Allow node exporter (9000/TCP)
+  community.general.ufw:
+    rule: allow
+    port: "{{ node_exporter_port }}"
+    proto: tcp
+
+##########################################################################
+# Healthcheck
+##########################################################################
+- name: postgres exporter health check
+  uri:
+    url: "http://127.0.0.1:{{ node_exporter_port }}"
+    follow_redirects: none
+    method: GET
+    status_code: 200
+  register: nginx_result
+  until: nginx_result.status == 200
+  retries: 720 # 720 * 5 seconds = 1hour (60*60/5)
+  delay: 5 # Every 5 seconds  

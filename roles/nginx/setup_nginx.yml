@@ -22,6 +22,14 @@
     group: root
     mode: 0600
 
+- name: Copy grafana.conf
+  template:
+    src: "conf/ansible/nginx/grafana.conf"
+    dest: "/etc/nginx/conf.d/grafana.conf"
+    owner: root
+    group: root
+    mode: 0600
+
 - name: Copy TLS cert
   ansible.builtin.copy:
     src: conf/tls/osctrl.crt

@@ -19,17 +19,30 @@ rule_files:
 # A scrape configuration containing exactly one endpoint to scrape:
 # Here it's Prometheus itself.
 scrape_configs:
-  - job_name: 'osctrl'
+  # - job_name: 'osctrl'
+  #   static_configs:
+  #     # osctrl components
+  #     - targets: [
+  #         "127.0.0.1:{{ osctrl_tls_port }}",    # osctrl-tls
+  #         "127.0.0.1:{{ osctrl_admin_port }}",  # osctrl-admin
+  #         "127.0.0.1:{{ osctrl_apo_port }}",    # osctrl-api
+  #         "127.0.0.1:{{  }}"
+  #       ]
+
+  - job_name: 'redis_exporter'
     static_configs:
-      # osctrl components
-      - targets: [
-          "127.0.0.1:{{ osctrl_tls_port }}",    # osctrl-tls
-          "127.0.0.1:{{ osctrl_admin_port }}",  # osctrl-admin
-          "127.0.0.1:{{ osctrl_apo_port }}",    # osctrl-api
-          "127.0.0.1:{{  }}"
-        ]
+      - targets: ["127.0.0.1:9121"]
 
   - job_name: 'prometheus'
     static_configs:
       - targets: ["127.0.0.1:9100"]
-          
+
+  # https://grafana.com/oss/prometheus/exporters/postgres-exporter/?tab=installation
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ["127.0.0.1:9187"]
+
+  # https://www.observability.blog/nginx-monitoring-with-prometheus/
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ["127.0.0.1:9113"]

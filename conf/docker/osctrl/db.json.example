@@ -1,0 +1,12 @@
+{
+    "db": {
+      "host": "_DB_HOST",
+      "port": "_DB_PORT",
+      "name": "_DB_NAME",
+      "username": "_DB_USERNAME",
+      "password": "_DB_PASSWORD",
+      "max_idle_conns": 20,
+      "max_open_conns": 100,
+      "conn_max_lifetime": 30
+    }
+  }
